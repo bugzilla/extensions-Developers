@@ -49,46 +49,12 @@ sub _migrate_gnome_developers {
     my $dev_group = Bugzilla::Group->new({ name => 'developers' });
     return 1 if $dev_group;
 
-    $dev_group = Bugzilla::Group->create({
-        name        => 'developers',
-        description => 'All developers in every product',
-        isbuggroup  => 1,
-        isactive    => 1,
-    });
-
     # Create product specific groups:
     foreach my $product (Bugzilla::Product->get_all) {
         my $group = Bugzilla::Group->new(
             { name => $product->name . '_developers' });
         if (!$group) {
-            # Create the group
-            $group = Bugzilla::Group->create({
-                name        => $product->name . '_developers',
-                description => $product->name . ' Developers',
-                isbuggroup  => 1,
-                isactive    => 1,
-            });
-
-            $dbh->do('INSERT INTO group_control_map
-                      (group_id, product_id, entry, membercontrol,
-                       othercontrol, canedit, editcomponents)
-                      VALUES (?, ?, 0, ?, ?, 0, 1)',
-                      undef, ($group->id, $product->id, CONTROLMAPSHOWN, 
-                              CONTROLMAPSHOWN));
-
-            $dbh->do('INSERT INTO group_group_map
-                      (member_id, grantor_id, grant_type)
-                      VALUES (?, ?, ?)',
-                      undef, ($group->id, $dev_group->id, GROUP_MEMBERSHIP));
-
-            # XXX - check&add differently
-            $dbh->do('INSERT INTO group_control_map
-                      (group_id, product_id, entry, membercontrol,
-                       othercontrol, canedit, editcomponents)
-                      VALUES (?, ?, 0, ?, ?, 0, 0)',
-                      undef, ($dev_group, $product->id, CONTROLMAPSHOWN, 
-                              CONTROLMAPSHOWN));
-
+            _create_developer($product);
         }
     }
 }
@@ -105,20 +71,20 @@ sub object_end_of_create {
 }
 
 sub _create_developer {
-    my $self = shift;
+    my $product = shift;
 
     # For every product in Bugzilla, create a group named like 
     # "<product_name>_developers". 
     # Every developer in the product should be made a member of this group.
     my $new_group = Bugzilla::Group->create({
-        name        => $self->{'name'} . '_developers',
-        description => $self->{'name'} . ' Developers',
+        name        => $product->{'name'} . '_developers',
+        description => $product->{'name'} . ' Developers',
         isactive    => 1,
         isbuggroup  => 1,
     });
  
     # The "<product name>_developers" group should be set to
-    # "MemberControl: Shown, OtherControl: N/A" in the product's group controls.
+    # "MemberControl: Shown, OtherControl: Shown" in the product's group controls.
     #
     # The "<product name>_developers" group should also be given editcomponents 
     # for the product.
@@ -127,7 +93,8 @@ sub _create_developer {
               (group_id, product_id, entry, membercontrol,
                othercontrol, canedit, editcomponents)
               VALUES (?, ?, 0, ?, ?, 0, 1)',
-              undef, ($new_group->id, $self->id, CONTROLMAPSHOWN, CONTROLMAPSHOWN));
+              undef, ($new_group->id, $product->id, CONTROLMAPSHOWN,
+                      CONTROLMAPSHOWN));
 
     # The group should be able to bless itself.
     $dbh->do('INSERT INTO group_group_map (grantor_id, member_id, grant_type)
@@ -150,6 +117,15 @@ sub _create_developer {
               (member_id, grantor_id, grant_type)
               VALUES (?, ?, ?)',
              undef, ($new_group->id, $dev_group->id, GROUP_MEMBERSHIP));
+
+    # The main "developers" group should be set to
+    # "MemberControl: Shown, OtherControl: Shown" in the product's group controls.
+    $dbh->do('INSERT INTO group_control_map
+              (group_id, product_id, entry, membercontrol,
+               othercontrol, canedit, editcomponents)
+              VALUES (?, ?, 0, ?, ?, 0, 0)',
+              undef, ($dev_group, $product->id, CONTROLMAPSHOWN, 
+                      CONTROLMAPSHOWN));
 }
 
 
