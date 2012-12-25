@@ -124,7 +124,7 @@ sub _create_developer {
               (group_id, product_id, entry, membercontrol,
                othercontrol, canedit, editcomponents)
               VALUES (?, ?, 0, ?, ?, 0, 0)',
-              undef, ($dev_group, $product->id, CONTROLMAPSHOWN, 
+              undef, ($dev_group->id, $product->id, CONTROLMAPSHOWN, 
                       CONTROLMAPSHOWN));
 }
 
