@@ -142,12 +142,12 @@ sub object_before_delete {
 }
 
 sub _delete_developer {
-    my $self = shift;
+    my $product = shift;
 
     my $dbh = Bugzilla->dbh;
 
     # Delete this product's developer group and its members
-    my $group = Bugzilla::Group->new({ name => $self->name . '_developers' });
+    my $group = Bugzilla::Group->new({ name => $product->name . '_developers' });
     if ($group) {
         $dbh->do('DELETE FROM user_group_map WHERE group_id = ?',
                   undef, $group->id);
@@ -179,15 +179,15 @@ sub object_end_of_update {
 }
 
 sub _rename_developer {
-    my ($self, $old_self, $changes) = @_;
+    my ($product, $old_product, $changes) = @_;
 
     my $developer_group = new Bugzilla::Group(
-        { name => $old_self->name . "_developers" });
+        { name => $old_product->name . "_developers" });
     my $new_group = new Bugzilla::Group(
-        { name => $self->name . '_developers' });
+        { name => $product->name . '_developers' });
     if ($developer_group && !$new_group) {
-        $developer_group->set_name($self->name . "_developers");
-        $developer_group->set_description($self->name . " Developers");
+        $developer_group->set_name($product->name . "_developers");
+        $developer_group->set_description($product->name . " Developers");
         $developer_group->update();
     }
 }
